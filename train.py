@@ -22,6 +22,29 @@ def log_statement(statement):
     text_file.close()
         
 def fit_and_evaluate(net, optimizer, loss_func, scheduler, train_ds ,dev_dl, n_epochs,accumulate_steps,model_save_name, batch_size=1,num_workers = 1 ):
+    '''
+    The model is fit on training set and evaluated using dev set. At every few epochs, the model is saved.
+    Accumulated gradients are used to mimic larger batch sizes.
+    
+    Parameters:
+    -------------------
+    net : UNET
+    optimizer : Adam optimizer
+    loss_func : Focal loss
+    train_ds : train dataset (Image Dataset Class)
+    dev_dl : dev set dataloader
+    n_epochs : number of epochs
+    accumulate_steps : number of steps after which backpropogation is carried out
+    model_save_name : name for model to be saved 
+    batch_size : training batch size
+    num_workers : for parallelizing image preprocessing in ImageDataset class
+    
+    Returns:
+    --------------------
+    train_losses : list of loss for training set at end of each epoch
+    dev_losses :list of loss for training set at the end of each epoch
+    
+    '''
     
     train_losses = []
     dev_losses = []
@@ -34,6 +57,12 @@ def fit_and_evaluate(net, optimizer, loss_func, scheduler, train_ds ,dev_dl, n_e
 
     print("epochs begin")
     for i in range(n_epochs):
+        
+        ''' 
+        Because of the large training set, we randomly select a subset 
+        of these images for trainin each epoch using pytorch subset function
+        '''
+        
         id_list = getSubsetId(train_ds)
         train_subset = torch.utils.data.Subset(train_ds,id_list.tolist())
         train_dl = torch.utils.data.DataLoader(dataset=train_subset, shuffle=True, batch_size=batch_size,pin_memory = True,num_workers = num_workers) 
@@ -42,6 +71,9 @@ def fit_and_evaluate(net, optimizer, loss_func, scheduler, train_ds ,dev_dl, n_e
         log_statement("epoch number : "+str(i))
         
         with torch.no_grad():
+             '''
+            Model is saved here
+            '''
             start_time = time.time()
             if i%1 == 0:
                 torch.save({
@@ -68,6 +100,7 @@ def fit_and_evaluate(net, optimizer, loss_func, scheduler, train_ds ,dev_dl, n_e
             loss.backward()
             
             if ((step+1)%accumulate_steps == 0):
+                
                 optimizer.step()
                 net.zero_grad()
                 

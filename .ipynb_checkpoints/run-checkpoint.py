@@ -18,10 +18,18 @@ from segmentation_unet import *
 from train import *
 
 if __name__ == "__main__":
+    
+    '''
+    Here we train the model three times
+    1. We train the upsample phase of the UNET
+    2. We train the upsample and the last two resnet blocks of the downsample UNET
+    3. We train the first three resnet blocks of the downsample unet
+    '''
+    
     batch_size = 16
     num_workers = 4
     sample_per_class = 4000
-    n_epochs = 8
+    n_epochs = 10
     accumulate_steps = 4
     
     train_file_location =os.path.join(os.getcwd(),'train','train.csv')
@@ -67,7 +75,7 @@ if __name__ == "__main__":
     checkpoint = torch.load(os.path.join(os.getcwd(),'models','model_1_7.h5py'))
     net.load_state_dict(checkpoint['model_state_dict'],strict=False)
     
-    n_epochs = 8
+    n_epochs = 10
     
     for name, layer in net.named_modules():
         if name.startswith(('dnlayer64x128','dnconvlayer64x256','dnlayer128x64')):
@@ -85,7 +93,7 @@ if __name__ == "__main__":
     checkpoint = torch.load(os.path.join(os.getcwd(),'models','model_2_7.h5py'))
     net.load_state_dict(checkpoint['model_state_dict'],strict=False)
     
-    n_epochs = 8
+    n_epochs = 10
     
     for name, layer in net.named_modules():
         if name.startswith(('dnlayer64x128','dnconvlayer64x256','dnlayer128x64')):

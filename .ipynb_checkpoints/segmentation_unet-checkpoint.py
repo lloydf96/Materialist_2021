@@ -16,7 +16,9 @@ import torch.optim as optim
 
 
 class FocalLoss(nn.Module):
-
+    '''
+    Ref: https://nuedc.sjtu.edu.cn/ckfinder/userfiles/files/27-%E5%93%88%E5%B0%94%E6%BB%A8%E5%B7%A5%E4%B8%9A%E5%A4%A7%E5%AD%A6-%E4%BD%9C%E5%93%81%E8%AE%BE%E8%AE%A1%E6%8A%A5%E5%91%8A%EF%BC%88%E4%B8%AD%E6%96%87%EF%BC%89.pdf
+    '''
     def __init__(self, focusing_param=2, balance_param=0.25):
         super(FocalLoss, self).__init__()
 
@@ -35,7 +37,11 @@ class FocalLoss(nn.Module):
     
 class UNet(nn.Module):
     def __init__(self,op_layers):
+      '''
+      The UNET defined here is composed of a downsample portion which is a pretrained RESNET-34
+      and an upsample portion which are defined and initialized using He Uniform Initialzation
       
+      '''
         super().__init__()
         resnet = models.resnet34(pretrained = True)
         self.dnconvlayer64x256 =resnet.conv1

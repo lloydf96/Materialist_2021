@@ -16,10 +16,9 @@ import torch.nn as nn
 import torch.optim as optim
 
 class ImageDataset(Dataset):
+    ''' The class is used by dataloader to generate tensors of a given batch size.'''
     def __init__(self,final_size,file_location,label_location,image_location,sample_per_class = 100,class_tbl=None):
-        #initialize class. set parameters for transform and image size reduction
         
-        #train or test path
         self.file_location = file_location
         self.height,self.width = final_size
         self.image_location = image_location
@@ -46,6 +45,16 @@ class ImageDataset(Dataset):
         return len(self.ImageList)
 
     def __getitem__(self, idx):
+        '''
+        Parameters:
+        -------------
+        idx : int, Index of the image from the domain determined by the csv file
+        
+        Returns:
+        -------------
+        image : floatTensor, Scaled image for the given idx
+        op: intTensor, 2D tensor with each pixel labeled by the class
+        '''
         
         ImageId = self.ImageList.ImageId[idx]
         metadata = self.metadata[self.metadata.ImageId.isin([ImageId])].drop_duplicates()
@@ -63,6 +72,7 @@ class ImageDataset(Dataset):
         return image.type(torch.float),op.type(torch.int64)
         
     def mask2img(self,metadata):
+        ''' mask as a 2D matrix is generated from a string of pixels locations codified in the .csv files'''
         
         metadata['encoded_pixel'] = list(map(int, metadata['EncodedPixels'].split(' ')))
 
@@ -78,11 +88,13 @@ class ImageDataset(Dataset):
         return mask
     
     def fit_image(self,image):
+        '''The image is scaled to fixed dimensions, it maintains aspect ratio and adds padding to the smaller of the two dimensions'''
         image = self.fit_to_size(image)
         image = self.pad_image(image)
         return np.array(image)
     
     def fit_to_size(self,image):
+        '''Scales image while maintaining aspect ratio'''
         #downsize image and mask
         height,width = image.size
         
@@ -120,6 +132,7 @@ class ImageDataset(Dataset):
         return image
     
     def pad_image(self,image):
+        '''Pads image across dimension with lower length'''
 
         height,width = image.size
         self.image = image

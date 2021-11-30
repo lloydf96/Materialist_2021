@@ -18,6 +18,14 @@ from segmentation_unet import *
 from train import *
 
 if __name__ == "__main__":
+    
+    '''
+    Here we train the model three times
+    1. We train the upsample phase of the UNET
+    2. We train the upsample and the last two resnet blocks of the downsample UNET
+    3. We train the first three resnet blocks of the downsample unet
+    '''
+    
     batch_size = 16
     num_workers = 4
     sample_per_class = 4000
