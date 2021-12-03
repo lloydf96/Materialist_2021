@@ -73,3 +73,89 @@ def dataloader(image_location,file_name,batch_size,sample_per_class=None):
 
     return ds,dl
 
+
+def get_postop(y_predict,y_op):
+    y_predict = np.concatenate([np.ones((y_predict.shape[0],1)),y_predict],axis = 1)
+    y_predict = torch.unsqueeze(torch.unsqueeze(torch.FloatTensor(y_predict),dim = 2),dim = 2)
+  
+    y_predict_op = y_op.to('cpu')*y_predict
+    y_predict_op[:,0,:,:] = (y_predict_op[:,1:,:,:].sum(axis = 1) == 0).type(torch.float)
+    return y_predict_op
+
+def iou_loss_postop_dl(net, dl,device,num_classes):
+
+    loss = 0   
+    iou = 0
+    len_dl = 0
+    
+    for x,y in dl:
+        
+        x,y = x.to(device),y.to(device)
+        y_op,y_op_class = net_op(net,x.to(device),threshold)
+        y_postop = model.predict(y_op_class[:,1:].to('cpu').numpy())
+        y_postop = get_postop(y_postop,y_op).to('cuda')
+        iou += iou_score(y_postop, y,num_classes).detach()
+        len_dl += x.shape[0]
+
+    return  iou/len_dl
+
+def iou_loss_dl(net, dl,device,num_classes):
+
+    loss = 0   
+    iou = 0
+    len_dl = 0
+    
+    for x,y in dl:
+        x,y = x.to(device),y.to(device)
+        y_op= net(x).detach()
+        iou += iou_score(y_op, y,num_classes).detach()
+        len_dl += x.shape[0]
+
+    return  iou/len_dl
+
+def confusion_matrix(net,test_dl,model,device): 
+    y_op_cm_list = torch.zeros((1,512,512)).to(device)
+    y_postop_cm_list = torch.zeros((1,512,512)).to(device)
+
+    for x,y in test_dl:
+        x,y = x.to(device),y.to(device)
+        y_op,y_op_class = net_op(net,x.to(device),threshold)
+
+        y_postop = model.predict(y_op_class[:,1:].to('cpu').numpy())
+        y_postop= clean_op(y_postop,y_op).to(device)
+        y_postop_confusion_matrix = y_postop * 1000 + y
+
+        y_op =  torch.argmax(y_op,axis = 1)
+        y_op_confusion_matrix = y_op * 1000 + y
+        y_postop_cm_list = torch.cat([y_postop_cm_list,y_postop_confusion_matrix],dim = 0)
+        y_op_cm_list =  torch.cat([y_op_cm_list,y_op_confusion_matrix],dim = 0)
+
+
+    y_postop_cm_list = y_postop_cm_list[1:,:,:]
+    y_op_cm_list = y_op_cm_list[1:,:,:]   
+
+    postop_cm = pd.DataFrame(zip(*torch.unique(torch.flatten(y_postop_cm_list.to('cpu'), start_dim=1),return_counts = True)),columns = ['label','count_postop']).applymap(lambda x : x.item())
+    op_cm = pd.DataFrame(zip(*torch.unique(torch.flatten(y_op_cm_list.to('cpu'), start_dim=1),return_counts = True)),columns = ['label','count_op']).applymap(lambda x : x.item())
+    postop_cm.set_index('label',inplace = True)
+    op_cm.set_index('label',inplace = True)
+    cm = pd.concat([postop_cm,op_cm],axis = 1)
+    cm.reset_index('label',inplace = True)
+    cm.label = cm.label + 1000
+
+    cm['predicted_class'] = cm.label.apply(lambda x : label_name[int(str(x)[0]) - 1])
+    cm['true_class'] = cm.label.apply(lambda x : label_name[int(str(x)[3])])
+
+
+    cm.set_index(['predicted_class','true_class'],inplace = True)
+    cm_postop = cm[['count_postop']].reset_index().pivot(index='predicted_class', columns='true_class', values='count_postop')
+    cm_op = cm[['count_op']].reset_index().pivot(index='predicted_class', columns='true_class', values='count_op')
+    cm_postop.fillna(0,inplace = True)
+    cm_op.fillna(0,inplace = True)
+
+    cm_op_row = cm_op.div(cm_op.sum(axis=1), axis=0)*100
+    cm_postop_row =  cm_postop.div(cm_postop.sum(axis=1), axis=0)*100
+
+    cm_op_col = cm_op.div(cm_op.sum(axis=0), axis=1)*100
+    cm_postop_col =  cm_postop.div(cm_postop.sum(axis=0), axis=1)*100 
+    
+    return cm_op_row,cm_postop_row,cm_op_col,cm_postop_col
