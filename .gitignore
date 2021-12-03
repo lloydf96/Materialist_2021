@@ -1,2 +1,5 @@
-.ipynb_checkpoints/**
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*.ipynb
 rf_net_old.ipynb
+**/*.ipynb_checkpoints/
+*/.ipynb_checkpoints/*
